@@ -599,7 +599,7 @@ void ctrtool::SettingsInitializer::determine_filetype()
 void ctrtool::SettingsInitializer::usage_text()
 {
 	fmt::print(stderr, "{:s} v{:d}.{:d}.{:d} (C) {:s}\n", APP_NAME, VER_MAJOR, VER_MINOR, VER_PATCH, AUTHORS);
-	fmt::print(stderr, "Built: {:s} {:s}\n\n", __TIME__, __DATE__);
+	fmt::print(stderr, "Built: {:s} {:s}          \n\n", __TIME__, __DATE__);
 
 	fmt::print(stderr, "Usage: {:s} [options... ] <file>\n", BIN_NAME);
 
