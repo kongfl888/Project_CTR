@@ -15,27 +15,103 @@ void PrintArgInvalid(char *arg);
 void PrintArgReqParam(char *arg, u32 paramNum);
 void PrintNoNeedParam(char *arg);
 
-int ParseArgs(int argc, char *argv[], user_settings *set)
+int Ends_with_txt(const char *filename) {
+    int len = strlen(filename);
+    if (len < 4) {
+        return 0;
+    }
+    return strcasecmp(filename + len - 4, ".txt") == 0;
+}
+
+void RemoveQuotes(char* str) {
+    if (str == NULL || str == "\0") return;
+    size_t len = strlen(str);
+    if (len >= 2 && (str[0] == '\"' || str[0] == '\'')
+        && (str[len - 1] == '\"' || str[len - 1] == '\'')) {
+        str[len - 1] = '\0';
+        memmove(str, str + 1, len);
+    }
+}
+
+char** Readtxt_and_split_first_line(const char* filename, int* num_tokens) {
+    FILE* tfile = fopen(filename, "r");
+    if (tfile == NULL) {
+        return NULL;
+    }
+    char line[65535];
+
+    if (fgets(line, sizeof(line), tfile) == NULL) {
+        fclose(tfile);
+        return NULL;
+    }
+    char** tokens = NULL;
+    int tokens_size = 1;
+    tokens = (char**)malloc(sizeof(char*) * 2);
+    tokens[0] = "";
+    tokens[tokens_size] = strtok(line, " ");
+    RemoveQuotes(tokens[tokens_size]);
+    while (tokens[tokens_size] != NULL) {
+        tokens_size++;
+        tokens = (char**)realloc(tokens, sizeof(char*) * (tokens_size + 1));
+        tokens[tokens_size] = strtok(NULL, " ");
+        RemoveQuotes(tokens[tokens_size]);
+    }
+
+    fclose(tfile);
+
+    *num_tokens = tokens_size;
+
+    return tokens;
+}
+
+int ParseArgs(int argcs, char *argvs[], user_settings *set)
 {
-	if (argv == NULL || set == NULL)
+	if (argvs == NULL || set == NULL)
 		return USR_PTR_PASS_FAIL;
 
-	if (argc < 2) {
-		DisplayHelp(argv[0]);
+	if (argcs < 2) {
+		DisplayHelp(argvs[0]);
 		return USR_HELP;
 	}
 
 	// Detecting Help Requried
-	for (int i = 1; i < argc; i++) {
-		if (strcmp(argv[i], "-help") == 0) {
-			DisplayHelp(argv[0]);
+	for (int i = 1; i < argcs; i++) {
+		if (strcmp(argvs[i], "-help") == 0) {
+			DisplayHelp(argvs[0]);
 			return USR_HELP;
 		}
-		else if (strcmp(argv[i], "-exthelp") == 0) {
-			DisplayExtendedHelp(argv[0]);
+		else if (strcmp(argvs[i], "-exthelp") == 0) {
+			DisplayExtendedHelp(argvs[0]);
 			return USR_HELP;
 		}
 	}
+
+    int argc = 1;
+    char** argv = NULL;
+    char** tokens = NULL;
+
+    // get argv from txt file
+    int num_tokens;
+    if (Ends_with_txt(argvs[1])) {
+        tokens = Readtxt_and_split_first_line(argvs[1], &num_tokens);
+        if (num_tokens == 0 || tokens == NULL) {
+            fprintf(stderr, "[ERROR] TXT Params is NULL\n");
+            DisplayHelp(argvs[0]);
+            return USR_HELP;
+        }
+        argv = tokens;
+        argv[0] = argvs[0];
+        argc = num_tokens;
+    }
+    else {
+        argv = argvs;
+        argc = argcs;
+    }
+
+	if (argv == NULL) {
+        fprintf(stderr, "[ERROR] Params is NULL\n");
+		return USR_PTR_PASS_FAIL;
+    }
 
 	// Allocating Memory for Content Path Ptrs
 	set->common.contentPath = calloc(CIA_MAX_CONTENT, sizeof(char*));
@@ -960,6 +1036,8 @@ void DisplayHelp(char *app_name)
 	printf("CIA/CCI OPTIONS:\n");
 	printf(" -content       <file>:<index>      Specify content files\n");
 	printf(" -ver           <version>           Title Version\n");
+	printf("A INDIVIDUAL OPTION:\n");
+	printf(" txtfile                            A txt file containing command-line parameters\n");
 }
 
 void DisplayExtendedHelp(char *app_name)
